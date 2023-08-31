@@ -4,6 +4,8 @@ Este projeto é parte integrante do Santander Bootcamp 2023 - Ciência de Dados 
 
 O objetivo deste desafio é criar um pipeline ETL (Extração, Transformação e Carregamento). O projeto irá integrar um e-commerce da plataforma Bagy com os sistemas de rastreamento dos Correios e da transportadora Braspress.
 
+Inicialmente, para remessas por meio dos Correios, executaremos uma extração de dados em um relatório de postagem fornecido pela agência em formato HTML. A partir desse relatório, obteremos os códigos das postagens juntamente com as notas correspondentes das remessas do dia. Uma vez concluída a coleta, procederemos à atualização individual de cada pedido com os detalhes de envio pertinentes.
+
 Através de APIs, coletamos informações dos pedidos enviados pelo e-commerce. Os status de envio de cada pedido são obtidos através das respectivas APIs das transportadoras. Com base nesses status, os pedidos são atualizados no sistema.
 
 ## Referências
