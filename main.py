@@ -1,5 +1,12 @@
+from file_processes import import_data_file
+from order_nfe import get_nfe_process
+from order_tracking_code import get_tracking_code_process
+from order_tracking_status import get_tracking_status_process
 
-from conections import get_correios_token
+import_data_file()
 
+get_nfe_process()
 
-token_correios = get_correios_token()
+get_tracking_code_process()
+
+get_tracking_status_process()
