@@ -1,11 +1,15 @@
 import os
 from bs4 import BeautifulSoup as bs
+from datetime import date
 from conections import get_sqlite_conection
 
 
 # Função para determinar o ID de transporte
 def get_transport_id(row_data):
-    if row_data[0] in ["ENCOMENDA NORMAL NOVO VAREJO", "ENCOMENDA NORMAL BRONZE"]:
+    if row_data[0] in [
+        "ENCOMENDA NORMAL NOVO VAREJO",
+        "ENCOMENDA NORMAL BRONZE"
+    ]:
         return 1315
     elif row_data[0] in ["ENCOMENDA NORMAL PAC MINI"]:
         return 20207
@@ -17,6 +21,7 @@ def get_transport_id(row_data):
     ]:
         return 8059
     return None
+
 
 # Função para processar e inserir postagens no banco de dados
 def process_postagens(data, conn):
@@ -30,7 +35,7 @@ def process_postagens(data, conn):
         if len(row_data) == 12:
             cd_postal = row_data[8]
             dest = row_data[1]
-            dt_postagem = row_data[0] + "/2023"
+            dt_postagem = f"{row_data[0]}/{str(date.today().year)}"
             cep_dest = row_data[2].replace("-", "")
             uf_dest = row_data[3]
             peso = row_data[5].replace(".", "")
@@ -64,23 +69,20 @@ def process_postagens(data, conn):
 
 
 # Função principal
-def main():
+def import_data_file():
     path = os.environ["path_htm_files"]
     conn = get_sqlite_conection()
-    
     dir = os.listdir(path)
     for file in dir:
         if file.endswith(".HTM"):
             html = open(os.path.join(path, file), "r")
             soup = bs(html, "html.parser")
             data = soup.findAll("tr", {"bgcolor": ["#FFFF66", "#FFFFCC", "#FFCC99"]})
-            
             process_postagens(data, conn)
-            
             html.close()
             os.remove(os.path.join(path, file))
-    
     conn.close()
 
+
 if __name__ == "__main__":
-    main()
+    import_data_file()
