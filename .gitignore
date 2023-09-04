@@ -161,3 +161,6 @@ cython_debug/
 
 # Vscode Settings
 .vscode
+
+# DB Postagens
+postagens.db
