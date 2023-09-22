@@ -49,7 +49,7 @@ def get_tracking_code(order):
     else:
         try:
             response = requests.get(
-                BRASPRESS_API_BASE_URL.format(cnpj, nfe), headers=BRASPRESS_HEADERS_API
+                BRASPRESS_API_BASE_URL.format(cnpj, nfe), headers=BRASPRESS_HEADERS_API, timeout=20
             )
             tracking = response.json()["conhecimentos"]
         except Exception as e:
@@ -139,7 +139,7 @@ def get_tracking_code_process():
     while True:
         if links["next"] is not None:
             response = requests.get(links["next"], headers=BAGY_HEADERS_API)
-            orders.append(response.json()["data"])
+            orders.extend(response.json()["data"])
             links = response.json()["links"]
         else:
             break

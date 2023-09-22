@@ -61,7 +61,7 @@ def get_nfe_process():
     while True:
         if links["next"] is not None:
             response = requests.get(links["next"], headers=BAGY_HEADERS_API)
-            orders.append(response.json()["data"])
+            orders.extend(response.json()["data"])
             links = response.json()["links"]
         else:
             break
