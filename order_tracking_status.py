@@ -10,6 +10,7 @@ from conections import (
     BAGY_ORDERS_API_BASE_URL,
     BAGY_HEADERS_API,
     cnpj,
+    get_mongodb_conection,
 )
 from body_email_pickup import body_email
 from send_email import send_email
@@ -32,6 +33,35 @@ def get_correios_tracking_data(ob):
         return None
 
 
+def save_correios_tracking_data(tracking_data):
+    mongoclient, collection = get_mongodb_conection()
+    try:
+        with mongoclient:
+            db = mongoclient.RastreadorDB
+            col = db.get_collection(collection)
+
+            # Certifique-se de que há um índice no campo "codObjeto"
+            col.create_index("codObjeto", unique=True)
+
+            cod_objeto = tracking_data["codObjeto"]
+            eventos_novos = tracking_data.get("eventos", [])
+
+            obj = col.find_one({"codObjeto": cod_objeto}, {"_id": 0})
+
+            if obj is None:
+                col.insert_one(tracking_data)
+            else:
+                eventos_atuais = obj.get("eventos", [])
+                if eventos_atuais != eventos_novos:
+                    col.update_one(
+                        {"codObjeto": cod_objeto},
+                        {"$set": {"eventos": eventos_novos}},
+                        upsert=True,
+                    )
+    except mongoclient.errors.PyMongoError as e:
+        print(f"Erro ao acessar o MongoDB: {e}")
+
+
 def get_braspress_tracking_data(nfe):
     try:
         response = requests.get(
@@ -51,6 +81,7 @@ def check_correios_tracking(order):
     tracking_data = get_correios_tracking_data(shipping_code)
     if tracking_data is None:
         return f"{shipping_code} - Falha na conexão com o rastreador dos Correios. Execução Cancelada!"
+    # save_correios_tracking_data(tracking_data)
     order_id = str(order["fulfillment"]["order_id"])
     order_code = str(order["code"])
     order_transp = order["fulfillment"]["shipping_carrier"]
@@ -132,7 +163,10 @@ def check_correios_tracking(order):
         return f"""{order_code} - {order_transp} - {shipping_code} : 
             Objeto não encontrado na base de dados dos Correios."""
 
-    elif event_status == ("Objeto entregue ao destinatário"):
+    elif event_status in [
+        "Objeto entregue ao destinatário",
+        "Objeto entregue na Caixa de Correios Inteligente",
+    ]:
         response = requests.put(
             f"{BAGY_ORDERS_API_BASE_URL}/{order['id']}/fulfillment/delivered",
             headers=BAGY_HEADERS_API,
@@ -242,7 +276,7 @@ def check_braspress_tracking(order):
     if tracking_data is None:
         return f"Falha na conexão com o rastreador da Braspress para NFe {nfe}. Execução Cancelada!"
     if tracking_data["conhecimentos"] != []:
-        if tracking_data["conhecimentos"][0]["ultimaOcorrencia"] == "ENTREGA REALIZADA":
+        if tracking_data["conhecimentos"][0]["dataEntrega"] is not None:
             response = requests.put(
                 f"{BAGY_ORDERS_API_BASE_URL}/{order['id']}/fulfillment/delivered",
                 headers=BAGY_HEADERS_API,
@@ -259,7 +293,7 @@ def check_braspress_tracking(order):
         ):
             return f"ATENÇÃO!! Pedido {order_code} está com o status {tracking_data['conhecimentos'][0]['status']} na Braspress."
         else:
-            return f"Pedido {order_code} está com o status {tracking_data['conhecimentos'][0]['ultimaOcorrencia']} na Braspress."
+            return f"Pedido {order_code} está com o status {tracking_data['conhecimentos'][0]['status']} na Braspress."
     else:
         return str(order["code"]) + " - " + order["fulfillment"]["shipping_carrier"]
 
@@ -269,8 +303,18 @@ def check_pickup_tracking(order):
         order["fulfillment"]["shipping_created_at"][0:10], "%Y-%m-%d"
     )
     dias = (datetime.now() - data_envio).days
-    if dias > 10:
+    if dias > 15:
+        response = requests.put(
+            f"{BAGY_ORDERS_API_BASE_URL}/{order['id']}/fulfillment/delivered",
+            headers=BAGY_HEADERS_API,
+        )
+        if response.status_code == 200:
+            return f"Pedido {order['code']} entregue. Status atualizado para Entregue na Bagy!"
+        else:
+            return f"Falha ao atualizar dados do pedido {order['code']} - {response.status_code}!"
+    elif dias > 10:
         return f"ATENÇÃO! Verificar se o pedido {order['code']} ainda está aguardando retirada"
+
     return f"Pedido {order['code']} aguardando retirada na Loja!"
 
 
@@ -295,7 +339,7 @@ def process_order_tracking(order):
 def get_tracking_status_process():
     url_get_orders = (
         f"{BAGY_ORDERS_API_BASE_URL}?payment_status=approved"
-        "&fulfillment_status=shipped&sort=code&limit=100"
+        "&fulfillment_status=shipped&sort=code&limit=100$marketplace=0"
     )
     response = requests.get(url_get_orders, headers=BAGY_HEADERS_API)
     orders = response.json()["data"]

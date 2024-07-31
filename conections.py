@@ -3,47 +3,63 @@ import dotenv
 import requests
 import sqlite3
 import pyodbc
+import pymongo
 from pathlib import Path
 
 dotenv.load_dotenv()
 
-#Variables
-cnpj = os.environ['cnpj']
-api_correios = os.environ['correios_tokenkey_API']
-cartao_postagem = os.environ['correios_cartao_postagem']
-db_sqlite = os.environ['db_sqlite']
-db_server = os.environ['erp_banco_server']
-db_database = os.environ['erp_database']
-db_user = os.environ['erp_db_username']
-db_password = os.environ['erp_db_password']
-bagy_token = os.environ['bagy_token']
-braspress_token = os.environ['braspress_token']
-email_smtp_server = os.environ['email_smtp_server']
-email_smtp_port = os.environ['email_smtp_port']
-email_smtp_user = os.environ['email_smtp_user']
-email_smtp_password = os.environ['email_smtp_password']
-email_sender = os.environ['email_sender']
+# Variables
+cnpj = os.environ["cnpj"]
+api_correios = os.environ["correios_tokenkey_API"]
+cartao_postagem = os.environ["correios_cartao_postagem"]
+db_sqlite = os.environ["db_sqlite"]
+db_server = os.environ["erp_banco_server"]
+db_database = os.environ["erp_database"]
+db_user = os.environ["erp_db_username"]
+db_password = os.environ["erp_db_password"]
+bagy_token = os.environ["bagy_token"]
+braspress_token = os.environ["braspress_token"]
+email_smtp_server = os.environ["email_smtp_server"]
+email_smtp_port = os.environ["email_smtp_port"]
+email_smtp_user = os.environ["email_smtp_user"]
+email_smtp_password = os.environ["email_smtp_password"]
+email_sender = os.environ["email_sender"]
+mongo_db_user = os.environ["mongo_db_user"]
+mongo_db_password = os.environ["mongo_db_password"]
+mongo_db_collection = os.environ["mongo_db_collection"]
 
-#URLs API Bagy
-BAGY_HEADERS_API = {'Authorization': f'Bearer {bagy_token}'}
-BAGY_ORDERS_API_BASE_URL = 'https://api.dooca.store/orders'
+# Atlas Mongo_DB
+MONGO_DB_URI = f"mongodb+srv://{mongo_db_user}:{mongo_db_password}@clustercursomongo.obk3a.mongodb.net/?retryWrites=true&w=majority"
 
-#URLs API Braspress
-BRASPRESS_HEADERS_API = {'Authorization': f'Basic {braspress_token}',
-                         'Content-Type': 'application/json;charset=UTF-8',
-                         'User-Agent': 'Rastro/1.0'}
-BRASPRESS_API_BASE_URL = "https://api.braspress.com/v1/tracking/{}/{}/json"
+# URLs API Bagy
+BAGY_HEADERS_API = {"Authorization": f"Bearer {bagy_token}"}
+BAGY_ORDERS_API_BASE_URL = "https://api.dooca.store/orders"
+
+# URLs API Braspress
+BRASPRESS_HEADERS_API = {
+    "Authorization": f"Basic {braspress_token}",
+    "Content-Type": "application/json;charset=UTF-8",
+    "User-Agent": "Rastro/1.0",
+}
+BRASPRESS_API_BASE_URL = "https://api.braspress.com/v3/tracking/byNf/{}/{}/json"
 
 
 def get_correios_token():
     headers = {"Authorization": f"Basic {api_correios}"}
-    response = requests.post(CORREIOS_API_AUTENTICATION_BASE_URL, json=cartao_postagem, headers=headers)
+    response = requests.post(
+        CORREIOS_API_AUTENTICATION_BASE_URL, json=cartao_postagem, headers=headers
+    )
     data = response.json()
     return data["token"] if response.status_code == 201 else None
 
-#URLs API Correios
-CORREIOS_API_TRACKING_BASE_URL = "https://api.correios.com.br/srorastro/v1/objetos/{}?resultado=T"
-CORREIOS_API_AUTENTICATION_BASE_URL = "https://api.correios.com.br/token/v1/autentica/cartaopostagem"
+
+# URLs API Correios
+CORREIOS_API_TRACKING_BASE_URL = (
+    "https://api.correios.com.br/srorastro/v1/objetos/{}?resultado=T"
+)
+CORREIOS_API_AUTENTICATION_BASE_URL = (
+    "https://api.correios.com.br/token/v1/autentica/cartaopostagem"
+)
 CORREIOS_API_TOKEN = get_correios_token()
 
 
@@ -63,3 +79,9 @@ def get_sql_conection():
         + f"SERVER={server};DATABASE={database};UID={username};PWD={password}"
     )
     return conn
+
+
+def get_mongodb_conection():
+    mongo_client = pymongo(MONGO_DB_URI)
+    collection = mongo_db_collection
+    return mongo_client, collection
