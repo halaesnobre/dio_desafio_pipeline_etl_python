@@ -9,7 +9,7 @@ def get_nota(order):
     url_fulfillment = f"{BAGY_ORDERS_API_BASE_URL}/{order_id}/fulfillment"
     con = get_sql_conection()
     concur = con.cursor()
-    sql = f"""select A.nffs_nfs, A.nffs_ser, c.CNFL_NFL from TCOM_NFFSAI A
+    sql = f"""select A.nffs_nfs, A.nffs_ser, c.CNFL_NFL, c.CNFL_TEX_NFLPROC from TCOM_NFFSAI A
     inner join TCOM_PEDSAI B on a.PEDS_COD = b.PEDS_COD
     inner join TOPE_CTRNFL C on A.nffs_cod = c.NFFS_COD
     where a.UNID_COD = 1 and b.PEDS_EXT_COD = 'D{order_code}';"""
@@ -20,12 +20,13 @@ def get_nota(order):
             "nfe_number": str(row[0]),
             "nfe_token": str(row[2]),
             "nfe_series": str(row[1]).strip(),
+            "nfe_xml": row[3]
         }
         resp = requests.put(
             f"{url_fulfillment}/invoiced", json=data, headers=BAGY_HEADERS_API
         )
         concur.close()
-        return data
+        return f"Pedido {order_code} atualizado para faturado na Bagy!"
     else:
         qr = f"select PEDS_COD from TCOM_PEDSAI B where B.PEDS_EXT_COD = 'D{order_code}';"
         concur.execute(qr)
